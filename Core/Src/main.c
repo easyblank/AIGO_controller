@@ -190,7 +190,7 @@ int main(void)
 
   //Initialize for motor PWM
 
-  //12,13 : LF | 14,15 : RF | 8,9 : RB | 9,10 : LB
+  //12,13 : LF | 14,15 : RF | 8,9 : RB | 10,11 : LB
   //write pin SET at lower pin to go forward
   //initialize all wheels directions forward
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, SET);
@@ -283,7 +283,7 @@ void Initialize_Encoder_Count(){
 	TIM5 -> CNT = 0;
 }
 void Receive_Encoder_Count(){
-	//TIM2 : LF, TIM3 : RF, TIM4 : RB, TIM5 : LB
+	//TIM2 : LF, TIM3 : RF, TIM4 : LB, TIM5 : RB
 	  //CntR = (TIM3 -> CNT >> 3) + (TIM4 -> CNT >> 3);
 	  //CntL = (TIM2 -> CNT >> 3) + (TIM5 -> CNT >> 3);
 		CntR = TIM4 -> CNT >> 2;
@@ -365,12 +365,14 @@ void Receive_Serial(){
 
 //named PID, but the example code implemented only P control i think T.T
 void Set_Motor_PID(){
-	//0 : LF | 1 : RF | 2 : RB | 3 : LB
+	//0 : LF | 1 : RF | 2 : LB | 3 : RB
 	uint8_t index = 0;
-
+	if(RecL !=0)
+		desired_speed_L = Calculate_Value(RecL);
 	//Determine Desired motor PWM value
-	desired_speed_L = Calculate_Value(RecL);
-	desired_speed_R = Calculate_Value(RecR);
+
+	if(RecR !=0)
+		desired_speed_R = Calculate_Value(RecR);
 
 	//Determine Current motor PWM value
 	encoder_speed_L = Calculate_Value(CntL);
@@ -380,8 +382,8 @@ void Set_Motor_PID(){
 
 	error_speed[0] = desired_speed_L - encoder_speed_L;
 	error_speed[1] = desired_speed_R - encoder_speed_R;
-	error_speed[2] = desired_speed_R - encoder_speed_R;
-	error_speed[3] = desired_speed_L - encoder_speed_L;
+	error_speed[2] = desired_speed_L - encoder_speed_L;
+	error_speed[3] = desired_speed_R - encoder_speed_R;
 
 	PID_speed[0] = old_PID_speed[0] + Kp*error_speed[0];
 	PID_speed[1] = old_PID_speed[1] + Kp*error_speed[1];
@@ -396,33 +398,31 @@ void Set_Motor_PID(){
 	//now, let's control motor PWM
 }
 void Set_Motor_PWM(){
-	//mind the order LF, RF, RB, LB
+	//mind the order LF, RF, LB, RB
 	//Set motor rotation direction first
 	//LF
-	/**
-	HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13, GPIO_PIN_SET);
 	if (PID_speed[0] > 0 || PID_speed[0] == 0){
-		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, SET);
-		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, RESET);
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, SET);
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, RESET);
 	}
 	else if(PID_speed[0] < 0){
-		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, RESET);
-		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, SET);
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, RESET);
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, SET);
 		PID_speed[0] *= -1;
 	}
 
 	//RF
 	if (PID_speed[1] > 0 || PID_speed[1] == 0){
-		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, SET);
-		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, RESET);
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, SET);
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, RESET);
 	}
 	else if(PID_speed[1] < 0){
-		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, RESET);
-		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, SET);
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, RESET);
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, SET);
 		PID_speed[1] *= -1;
 	}
 
-	//RB
+	//LB
 	if (PID_speed[2] > 0 || PID_speed[2] == 0){
 		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, SET);
 		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, RESET);
@@ -433,7 +433,7 @@ void Set_Motor_PWM(){
 		PID_speed[2] *= -1;
 	}
 
-	//LB
+	//RB
 	if (PID_speed[3] > 0 || PID_speed[3] == 0){
 		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, SET);
 		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, RESET);
@@ -442,20 +442,20 @@ void Set_Motor_PWM(){
 		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, RESET);
 		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, SET);
 		PID_speed[3] *= -1;
-	}**/
+	}
 	//For Safety, PID_speed won't go beyond 9,000
 	uint8_t i = 0;
 	while (i < 4){
-		if (PID_speed[i]>9000){
-			PID_speed[i] = 9000;
+		if (PID_speed[i]> 3000){
+			PID_speed[i] = 3000;
 		}
 		i++;
 	}
 	//Set PWM value
-	 TIM1->CCR1 = 4000;
-	 TIM1->CCR2 = 4000;
-	 TIM1->CCR3 = 4000;
-	 TIM1->CCR4 = 4000;
+	 TIM1->CCR1 = PID_speed[0];
+	 TIM1->CCR2 = PID_speed[1];
+	 TIM1->CCR3 = PID_speed[2];
+	 TIM1->CCR4 = PID_speed[3];
 }
 uint32_t Calculate_Value(uint32_t val){
 	return 164.18 * exp(0.0112 * val);

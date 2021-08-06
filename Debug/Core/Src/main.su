@@ -8,7 +8,7 @@ main.c:304:6:Receive_Lidar	8	static
 main.c:326:6:Transmit_Data	8	static
 main.c:351:6:Receive_Serial	24	static
 main.c:367:6:Set_Motor_PID	16	static
-main.c:398:6:Set_Motor_PWM	16	static
+main.c:400:6:Set_Motor_PWM	16	static
 main.c:460:10:Calculate_Value	16	static
 main.c:463:6:HAL_UART_TxCpltCallback	16	static
 main.c:468:6:HAL_UART_RxCpltCallback	16	static
